@@ -24,11 +24,31 @@ defmodule Wowlr.Config do
   @doc "get active locale"
   def locale(), do: get(:locale, "en_US")
 
+  def region(), do: get(:region, "eu")
+
   @doc "client_id for battlenet api"
   def bnet_client_id(), do: get(:bnet_client_id, nil)
+  def set_bnet_client_id(id), do: set(:bnet_client_id, id)
 
   @doc "client secret for battlenet api"
   def bnet_client_secret(), do: get(:bnet_client_secret, nil)
+  def set_bnet_client_secret(id), do: set(:bnet_client_secret, id)
+
+  @doc """
+  get a valid auth token or nil
+  """
+  def auth_token() do
+    {token, timeout} = get(:bnet_auth_token, {nil, :os.system_time(:seconds) - 10})
+
+    case timeout > :os.system_time(:seconds) do
+      true -> token
+      false -> nil
+    end
+  end
+
+  def set_auth_token(token, expires_in) do
+    set(:bnet_auth_token, {token, :os.system_time(:seconds) + expires_in})
+  end
 
   ## Generic getter/setter stuff
 
@@ -40,7 +60,7 @@ defmodule Wowlr.Config do
   @doc "get a setting value"
   def get(key) do
     case :ets.lookup(:settings, key) do
-      [{key, value}] -> {:ok, value}
+      [{^key, value}] -> {:ok, value}
       _ -> {:error, :notfound}
     end
   end
@@ -63,7 +83,6 @@ defmodule Wowlr.Config do
   ### GenServer Stuff ###
   #######################
 
-  @impl GenServer
   def start_link(args) do
     GenServer.start_link(__MODULE__, args, name: __MODULE__)
   end
@@ -81,9 +100,15 @@ defmodule Wowlr.Config do
     {:ok, file_path}
   end
 
+  @impl GenServer
   def handle_cast({:write, key, value}, state) do
     :ets.insert(@table, {key, value})
-    :ets.tab2file(@table, state)
+
+    case :ets.tab2file(@table, String.to_charlist(state)) do
+      {:error, reason} -> IO.inspect(reason, label: "ets err")
+      _ -> :ok
+    end
+
     {:noreply, state}
   end
 end
