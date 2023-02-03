@@ -17,6 +17,8 @@ config :wowlr, WowlrWeb.Endpoint,
   secret_key_base: "ltKK8RaYe4n/SoO4jQpo0QYLsgdR1meYad/HE00nTnPAANmOlEZ8J9pFDejJ4BIS",
   server: false
 
+config :wowlr, Wowlr.Bnet, adapter: Wowlr.Bnet.TestAdapter
+
 # Print only warnings and errors during test
 config :logger, level: :warn
 

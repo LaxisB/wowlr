@@ -5,55 +5,24 @@ defmodule Wowlr.Bnet do
    - https://develop.battle.net/documentation/battle-net/oauth-apis
    - https://develop.battle.net/documentation/world-of-warcraft/game-data-apis
   """
+  @on_definition Wowlr.SpecToCallback
 
-  alias Wowlr.Config
+  alias Wowlr.Bnet
 
-  def base_url() do
-    base_url(Config.region())
-  end
+  defdelegate authorize, to: Bnet.Auth
 
-  def base_url(region), do: "https://#{region}.api.blizzard.com"
+  @spec get_spell(String.t()) :: Map.t()
+  def get_spell(id), do: impl().get_spell(id)
 
-  defdelegate authorize, to: Wowlr.Bnet.Auth
+  @spec get_spell_media(String.t()) :: Map.t()
+  def get_spell_media(id), do: impl().get_spell(id)
 
-  def get_auth_header() do
-    token = Wowlr.Config.auth_token()
-    [{"authorization", "Bearer #{token}"}]
-  end
+  @spec get_character({String.t(), String.t(), String.t()}) :: Map.t()
+  def get_character(args), do: impl().get_character(args)
 
-  def build_query(%{} = opts) do
-    given_namespace = Map.get(opts, :namespace, "static")
-    updated = Map.drop(opts, [:namespace])
-
-    Map.merge(
-      %{
-        locale: Config.locale(),
-        region: Config.region(),
-        namespace: given_namespace <> "-" <> Config.region()
-      },
-      updated
-    )
-    |> URI.encode_query()
-  end
-
-  def unwrap_response({:error, res}), do: {:error, res}
-
-  def unwrap_response({:ok, %Finch.Response{status: status, body: ""}})
-      when status >= 200 and status < 300 do
-    {:ok, nil}
-  end
-
-  def unwrap_response({:ok, %Finch.Response{status: status, body: ""}}) do
-    {:error, :no_body, status}
-  end
-
-  def unwrap_response({:ok, %Finch.Response{status: status, body: body}}) do
-    {:ok, payload} = Jason.decode(body)
-
-    case status do
-      x when x in 200..299 -> {:ok, payload}
-      x when x in 400..499 -> {:error, :client_error, body}
-      x when x in 500..599 -> {:error, :server_error, body}
-    end
+  # get the active adapter (or fail otherwise)
+  defp impl do
+    config = Application.get_env(:wowlr, Wowlr.Bnet)
+    config[:adapter] || Bnet.FailAdapter
   end
 end

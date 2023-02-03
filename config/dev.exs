@@ -26,6 +26,8 @@ config :wowlr, WowlrWeb.Endpoint,
     esbuild: {Esbuild, :install_and_run, [:default, ~w(--sourcemap=inline --watch)]}
   ]
 
+config :wowlr, Wowlr.Bnet, adapter: Wowlr.Bnet.LiveAdapter
+
 # ## SSL Support
 #
 # In order to use HTTPS in development, a self-signed

@@ -1,16 +1,17 @@
 defmodule Wowlr.Bnet.Auth do
   @base_url "https://oauth.battle.net/token"
+  alias Wowlr.Config
 
   def authorize() do
     auth =
-      [Wowlr.Config.bnet_client_id(), Wowlr.Config.bnet_client_secret()]
+      [Config.bnet_client_id(), Config.bnet_client_secret()]
       |> Enum.join(":")
       |> Base.encode64()
 
     query =
       URI.encode_query(%{
-        client_id: Wowlr.Config.bnet_client_id(),
-        client_secret: Wowlr.Config.bnet_client_secret(),
+        client_id: Config.bnet_client_id(),
+        client_secret: Config.bnet_client_secret(),
         grant_type: "client_credentials"
       })
 
@@ -31,6 +32,13 @@ defmodule Wowlr.Bnet.Auth do
       {:res, {:error, reason}} -> {:error, :request_failed, reason}
       {:body, {:error, reason}} -> {:error, :decode_failedm, reason}
       {:keys, body} -> {:error, :bad_res, body}
+    end
+  end
+
+  def ensure_auth() do
+    case Wowlr.Config.auth_token() do
+      nil -> authorize()
+      _ -> {:ok, :authed}
     end
   end
 end

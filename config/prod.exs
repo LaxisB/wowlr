@@ -11,6 +11,8 @@ import Config
 # before starting your production server.
 config :wowlr, WowlrWeb.Endpoint, cache_static_manifest: "priv/static/cache_manifest.json"
 
+config :wowlr, Wowlr.Bnet, adapter: Wowlr.Bnet.LiveAdapter
+
 # Do not print debug messages in production
 config :logger, level: :info
 
