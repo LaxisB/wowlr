@@ -8,6 +8,8 @@ defmodule Wowlr.Application do
     children = [
       Wowlr.Repo,
       {Task, &Wowlr.MigrationHelpers.migrate/0},
+      {Wowlr.Logs, []},
+      Wowlr.Logs.LogReader,
       WowlrWeb.Telemetry,
       {Phoenix.PubSub, name: Wowlr.PubSub},
       WowlrWeb.Endpoint,

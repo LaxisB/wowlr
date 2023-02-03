@@ -45,7 +45,8 @@ defmodule Wowlr.MixProject do
       {:gettext, "~> 0.18"},
       {:jason, "~> 1.2"},
       {:plug_cowboy, "~> 2.5"},
-      {:nimble_parsec, "~> 1.2"}
+      {:nimble_parsec, "~> 1.2"},
+      {:timex, "~> 3.7"}
     ]
   end
 
