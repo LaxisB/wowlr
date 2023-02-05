@@ -1,12 +1,11 @@
 defmodule Wowlr.Logs do
   use DynamicSupervisor
 
-  @impl DynamicSupervisor
   def start_link(args) do
     DynamicSupervisor.start_link(__MODULE__, args, name: __MODULE__)
   end
 
-  @impl DynamicSupervisor
+  @impl true
   def init(_) do
     DynamicSupervisor.init(strategy: :one_for_one)
   end
@@ -16,8 +15,25 @@ defmodule Wowlr.Logs do
   end
 
   def test() do
-    Wowlr.Logs.Parser.line(
-      "1/5 16:43:45.443  COMBAT_LOG_VERSION,20,ADVANCED_LOG_ENABLED,1,BUILD_VERSION,10.0.2,PROJECT_ID,1\n"
-    )
+    {:ok, header} =
+      Wowlr.Logs.LogReader.watch(
+        "D:\\Games\\World of Warcraft\\_retail_\\Logs\\WoWCombatLog-020423_194934.txt"
+      )
+
+    IO.inspect(header, label: "header")
+    read(2, header.timestamp)
+  end
+
+  def read(0, _), do: :ok
+
+  def read(num, reference_time) when is_number(num) do
+    case Wowlr.Logs.LogReader.read(reference_time) do
+      {:ok, parsed, line} ->
+        IO.inspect(parsed, label: "parsed")
+        read(num - 1, reference_time)
+
+      {:error, err, line} ->
+        IO.inspect(line, label: err)
+    end
   end
 end
