@@ -132,7 +132,7 @@ defmodule Wowlr.Logs.Parser.Handrolled do
     [val, String.trim_leading(rest, ",")]
   end
 
-  defp parse_value(value) do
+  def parse_value(value) do
     int_match = String.match?(value, ~r/^-?\d+$/)
     float_match = String.match?(value, ~r/^-?\d+\.\d+$/)
 

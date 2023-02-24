@@ -1,39 +1,39 @@
 defmodule Wowlr.Logs do
-  use DynamicSupervisor
+  alias Wowlr.Eventbus
 
-  def start_link(args) do
-    DynamicSupervisor.start_link(__MODULE__, args, name: __MODULE__)
-  end
+  def read_file(filename) do
+    file_path =
+      Path.join([Wowlr.Config.game_dir(), "Logs", filename])
+      |> String.replace(~r"/", "\\")
 
-  @impl true
-  def init(_) do
-    DynamicSupervisor.init(strategy: :one_for_one)
-  end
-
-  def watch_file(path) do
-    Wowlr.Logs.LogReader.watch(path)
+    Wowlr.Logs.LogReader.watch(file_path)
   end
 
   def test() do
-    {:ok, header} =
-      Wowlr.Logs.LogReader.watch(
-        "D:\\Games\\World of Warcraft\\_retail_\\Logs\\WoWCombatLog-020423_194934.txt"
-      )
-
-    IO.inspect(header, label: "header")
-    read(2, header.timestamp)
+    Wowlr.Logs.LogReader.watch(
+      # "D:\\Games\\World of Warcraft\\_retail_\\Logs\\WoWCombatLog-022223_184848.txt"
+      "D:\\Games\\World of Warcraft\\_retail_\\Logs\\WoWCombatLog-022023_200153.txt"
+    )
   end
 
-  def read(0, _), do: :ok
+  def get_state() do
+    Wowlr.Stats.Manager.get_state("Player-3686-0746ACAD")
+  end
 
-  def read(num, reference_time) when is_number(num) do
-    case Wowlr.Logs.LogReader.read(reference_time) do
-      {:ok, parsed, line} ->
-        IO.inspect(parsed, label: "parsed")
-        read(num - 1, reference_time)
+  def handle_drained(path) do
+    IO.puts("file drained")
 
-      {:error, err, line} ->
-        IO.inspect(line, label: err)
-    end
+    Eventbus.Event.new(path)
+    |> Eventbus.publish(:file_drained)
+  end
+
+  def handle_filechange(path) do
+    Eventbus.Event.new(path)
+    |> Eventbus.publish(:file_changed)
+  end
+
+  def handle_event(parsed) do
+    Eventbus.Event.new(parsed, hd(parsed.payload))
+    |> Eventbus.publish(:event_read)
   end
 end

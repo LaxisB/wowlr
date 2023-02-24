@@ -8,13 +8,15 @@ defmodule Wowlr.Application do
     children = [
       Wowlr.Repo,
       {Task, &Wowlr.MigrationHelpers.migrate/0},
-      {Wowlr.Logs, []},
+      Wowlr.Config,
+      Wowlr.Eventbus.Supervisor,
       Wowlr.Logs.LogReader,
+      Wowlr.Stats.Manager,
       WowlrWeb.Telemetry,
+      {DynamicSupervisor, name: Wowlr.Stats.Supervisor},
       {Phoenix.PubSub, name: Wowlr.PubSub},
       WowlrWeb.Endpoint,
-      {Finch, name: MyFinch},
-      Wowlr.Config
+      {Finch, name: MyFinch}
     ]
 
     opts = [strategy: :one_for_one, name: Wowlr.Supervisor]

@@ -1,14 +1,11 @@
 defmodule Wowlr.Logs.LogReader do
   use GenServer
+  alias Wowlr.Eventbus
 
-  defstruct timestamp: 0, log_version: 0, advanced: false, version: "0", project_id: 0
+  defstruct reference_time: nil, path: "", read_count: 0
 
   def watch(path) do
-    GenServer.call(__MODULE__, {:watch, path})
-  end
-
-  def read(time) do
-    GenServer.call(__MODULE__, {:read, time})
+    GenServer.cast(__MODULE__, {:watch, path})
   end
 
   def start_link(args) do
@@ -17,71 +14,70 @@ defmodule Wowlr.Logs.LogReader do
 
   @impl true
   def init(_) do
-    {:ok, {nil, %__MODULE__{timestamp: nil, advanced: false, version: "0.0.0"}}}
+    Eventbus.create_topic(:file_changed)
+    Eventbus.create_topic(:file_drained)
+    Eventbus.create_topic(:event_read)
+    {:ok, {nil, %__MODULE__{}}}
   end
 
   @impl true
-  def handle_call({:watch, path}, _from, {device, state}) do
+  def handle_cast({:watch, path}, {device, state}) do
     if device do
       File.close(device)
     end
 
+    Wowlr.Logs.handle_filechange(path)
+
     {:ok, info} = File.stat(path)
-    {:ok, device} = File.open(path, [:read, :utf8])
+    # passing :utf8 explodes
+    {:ok, device} = File.open(path, [:read])
 
     timestamp =
       info.ctime
       |> NaiveDateTime.from_erl!()
       |> Timex.to_datetime()
 
-    with {:ok, line} <- :file.read_line(device),
-         {:ok, parsed} <- parse(line, timestamp) do
-      [log_version, _, advanced, _, version, _, project_id] = parsed.payload
+    new_state = %__MODULE__{
+      reference_time: timestamp,
+      path: path,
+      read_count: 0
+    }
 
-      adv =
-        case advanced do
-          1 -> true
-          _ -> false
-        end
-
-      new_state = %{
-        state
-        | timestamp: timestamp,
-          log_version: log_version,
-          advanced: adv,
-          version: version,
-          project_id: project_id
-      }
-
-      {:reply, {:ok, new_state}, {device, new_state}}
-    else
-      {:error, reason} -> {:reply, {:error, reason}, {device, state}}
-      {:error, reason, line} -> {:reply, {:error, reason, line}, {device, state}}
-    end
+    Process.send_after(self(), :read_loop, 200)
+    {:noreply, {device, new_state}}
   end
 
   @impl true
-  def handle_call({:read, time}, _from, {device, state}) do
-    with {:ok, line} <- :file.read_line(device),
-         {:ok, parsed} <- parse(line, time) do
-      {:reply, {:ok, parsed, line}, {device, state}}
-    else
-      {:error, reason} -> {:reply, {:error, reason}, {device, state}}
-      {:error, reason, line} -> {:reply, {:error, reason, line}, {device, state}}
+  def handle_info(:read_loop, {device, state}) do
+    case read_until_empty({device, state}) do
+      {:ok, {_, new_state}} ->
+        sleep_time =
+          case state.read_count == new_state.read_count do
+            true -> 1000
+            false -> 200
+          end
+
+        Process.send_after(self(), :read_loop, sleep_time)
+        {:noreply, {device, new_state}}
+
+      {:error, reason} ->
+        {:noreply, state}
     end
   end
 
-  defp parse(line, reference_time) do
-    case Wowlr.Logs.Parser.parse_line(line, reference_time) do
-      {:ok, parsed} ->
-        {:ok, parsed}
+  defp read_until_empty({device, state}) do
+    with {:ok, line} <- :file.read_line(device),
+         {:ok, parsed} <- Wowlr.Logs.Parser.parse_line(line, state.reference_time) do
+      Wowlr.Logs.handle_event(parsed)
 
-      {:error, err} ->
-        {:error, err, line}
+      read_until_empty({device, %{state | read_count: state.read_count + 1}})
+    else
+      :eof ->
+        Wowlr.Logs.handle_drained(state.path)
+        {:ok, {device, state}}
 
-      other ->
-        dbg()
-        {:error, other}
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 end

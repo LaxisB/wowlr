@@ -1,19 +1,19 @@
 # Wowlr
 
-To start your Phoenix server:
+## Todo
 
-  * Install dependencies with `mix deps.get`
-  * Create and migrate your database with `mix ecto.setup`
-  * Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
+ - [x] replace event_bus with own solution
+   - [x] subscribe pids
+   - [x] route event to source guid
+ - [ ] remove 'old' aggregator handling
+ - [ ] batch event inserts
+ - [ ] map raw events to something that can be inserted
 
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
-
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
-
-## Learn more
-
-  * Official website: https://www.phoenixframework.org/
-  * Guides: https://hexdocs.pm/phoenix/overview.html
-  * Docs: https://hexdocs.pm/phoenix
-  * Forum: https://elixirforum.com/c/phoenix-forum
-  * Source: https://github.com/phoenixframework/phoenix
+ - [ ] implement directory watcher
+ - [ ] set up data storage
+ - [ ] event storage (useful?)
+ - [ ] basic ui
+ - [ ] charts n stuff
+ - [ ] bundling
+ - [ ] ???
+ - [ ] profit
